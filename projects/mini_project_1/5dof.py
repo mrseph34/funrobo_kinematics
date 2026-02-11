@@ -7,57 +7,51 @@ from funrobo_kinematics.core.arm_models import (
 )
 
 
-class FiveDOFHiwonder(FiveDOFRobotTemplate):
-    def __init__(self):
-        super().__init__()
-        
-        # Link lengths in meters
-        self.l1 = 0.106
-        self.l2 = 0.106
-        self.l3 = 0.166
-        self.base_height = 0.106
 
-
+class FiveDOF(FiveDOFRobotTemplate):
     def calc_forward_kinematics(self, joint_values: list, radians=True):
         curr_joint_values = joint_values.copy()
         
         th1, th2, th3, th4, th5 = curr_joint_values
-        l1, l2, l3 = self.l1, self.l2, self.l3
 
         # Base rotation around Z-axis
         H0_1 = np.array([
             [cos(th1), -sin(th1), 0, 0],
             [sin(th1),  cos(th1), 0, 0],
-            [0,         0,        1, self.base_height],
+            [0,         0,        1, self.l4],  # Using l4 as base height
             [0,         0,        0, 1]
         ])
+
 
         # Shoulder pitch
         c2, s2 = cos(th2), sin(th2)
         H1_2 = np.array([
-            [c2,  0, s2, l1],
+            [c2,  0, s2, self.l1],
             [0,   1, 0,  0],
             [-s2, 0, c2, 0],
             [0,   0, 0,  1]
         ])
 
+
         # Elbow pitch
         c3, s3 = cos(th3), sin(th3)
         H2_3 = np.array([
-            [c3,  0, s3, l2],
+            [c3,  0, s3, self.l2],
             [0,   1, 0,  0],
             [-s3, 0, c3, 0],
             [0,   0, 0,  1]
         ])
 
+
         # Wrist pitch
         c4, s4 = cos(th4), sin(th4)
         H3_4 = np.array([
-            [c4,  0, s4, l3],
+            [c4,  0, s4, self.l3],
             [0,   1, 0,  0],
             [-s4, 0, c4, 0],
             [0,   0, 0,  1]
         ])
+
 
         # Wrist roll around X-axis
         c5, s5 = cos(th5), sin(th5)
@@ -70,8 +64,10 @@ class FiveDOFHiwonder(FiveDOFRobotTemplate):
         
         Hlist = [H0_1, H1_2, H2_3, H3_4, H4_5]
 
+
         # Calculate end effector transformation
         H_ee = H0_1 @ H1_2 @ H2_3 @ H3_4 @ H4_5
+
 
         # Set end effector position
         ee = ut.EndEffector()
@@ -81,11 +77,14 @@ class FiveDOFHiwonder(FiveDOFRobotTemplate):
         rpy = ut.rotm_to_euler(H_ee[:3, :3])
         ee.rotx, ee.roty, ee.rotz = rpy[0], rpy[1], rpy[2]
 
+
         return ee, Hlist
+
 
 
     def calc_velocity_kinematics(self, joint_values: list, vel: list, dt=0.02):
         new_joint_values = joint_values.copy()
+
 
         # Move robot slightly out of zeros singularity
         if all(theta == 0.0 for theta in new_joint_values):
@@ -101,9 +100,11 @@ class FiveDOFHiwonder(FiveDOFRobotTemplate):
                             [limit[1] for limit in self.joint_vel_limits]
                         )
 
+
         # Update joint angles
         for i in range(self.num_dof):
             new_joint_values[i] += dt * joint_vel[i]
+
 
         # Ensure joint angles stay within limits
         new_joint_values = np.clip(new_joint_values, 
@@ -114,8 +115,11 @@ class FiveDOFHiwonder(FiveDOFRobotTemplate):
         return new_joint_values
 
 
+
     def jacobian(self, joint_values: list):
         th1, th2, th3, th4, th5 = joint_values
+        
+        # Use base class link lengths directly
         l1, l2, l3 = self.l1, self.l2, self.l3
         
         # Calculate cumulative angles
@@ -159,12 +163,14 @@ class FiveDOFHiwonder(FiveDOFRobotTemplate):
         return J
     
 
+
     def inverse_jacobian(self, joint_values: list):
         return np.linalg.pinv(self.jacobian(joint_values))
 
 
+
 if __name__ == "__main__":
-    model = FiveDOFHiwonder()
+    model = FiveDOF()
     robot = RobotSim(robot_model=model)
     viz = Visualizer(robot=robot)
     viz.run()
