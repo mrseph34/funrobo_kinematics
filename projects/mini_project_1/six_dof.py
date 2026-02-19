@@ -127,7 +127,7 @@ class KinovaRobot(KinovaRobotTemplate):
 
     def inverse_jacobian(self, joint_values: list):
         J = self.jacobian(joint_values)
-        damping = 0.05
+        damping = 0.02
         return J.T @ np.linalg.inv(J @ J.T + damping**2 * np.eye(6))
 
 
