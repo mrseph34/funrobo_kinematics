@@ -36,19 +36,15 @@ class KinovaRobot(KinovaRobotTemplate):
             c, s = cos(th), sin(th)
             return np.array([[c,0,s,0],[0,1,0,0],[-s,0,c,0],[0,0,0,1]])
 
-        def Rx(th):
-            c, s = cos(th), sin(th)
-            return np.array([[1,0,0,0],[0,c,-s,0],[0,s,c,0],[0,0,0,1]])
-
         def T(x, y, z):
             return np.array([[1,0,0,x],[0,1,0,y],[0,0,1,z],[0,0,0,1]])
 
-        H1 = Rz(th1) @ T(0,   0,  self.l1)
-        H2 = Ry(th2) @ T(0,   0,  self.l2)
-        H3 = Ry(th3) @ T(a3,  0,  d3)
-        H4 = Rx(th4) @ T(a4,  0,  d4)
-        H5 = Rz(th5) @ T(a5,  0,  d5)
-        H6 = Ry(th6) @ T(0,   0,  0)
+        H1 = Rz(th1) @ T(0,  0,  self.l1)
+        H2 = Rz(th2) @ T(0,  0,  self.l2)
+        H3 = Ry(th3) @ T(a3, 0,  d3)
+        H4 = Rz(th4) @ T(a4, 0,  d4)
+        H5 = Ry(th5) @ T(0,  0,  0)
+        H6 = Rz(th6) @ T(a5, 0,  d5)
         H7 = np.eye(4)
 
         Hlist = [H1, H2, H3, H4, H5, H6, H7]
@@ -78,6 +74,11 @@ class KinovaRobot(KinovaRobotTemplate):
             ]
 
         vel = vel[:6] if len(vel) >= 6 else vel + [0] * (6 - len(vel))
+
+        vel_z = abs(vel[2])
+        vel_xy = max(abs(vel[0]), abs(vel[1]))
+        if vel_z > vel_xy:
+            dt = 0.06
 
         joint_vel = self.inverse_jacobian(new_joint_values) @ np.array(vel)
 
