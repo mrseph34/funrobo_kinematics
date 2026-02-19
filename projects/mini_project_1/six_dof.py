@@ -21,13 +21,61 @@ class KinovaRobot(KinovaRobotTemplate):
         j5_bwd = 0.25 * self.l1
         drop   = 0.40 * self.l1
 
-        H1 = ut.dh_to_matrix([th1,          self.l1,                          0,                          0])
-        H2 = ut.dh_to_matrix([th2,          self.l2,                          0,                          0])
-        H3 = ut.dh_to_matrix([th3,          self.l3 - offset - drop,         -self.l4 - back + j3_fwd,    0])
-        H4 = ut.dh_to_matrix([th4,          self.l5,                          self.l4 + back - j3_fwd,    0])
-        H5 = ut.dh_to_matrix([th5,         -(5/3) * self.l5 + up,             self.l6 + fwd - j5_bwd,     0])
-        H6 = ut.dh_to_matrix([th6,          0,                                0,                          0])
-        H7 = ut.dh_to_matrix([0,            0,                                0,                          0])
+        c1, s1 = cos(th1), sin(th1)
+        H1 = np.array([
+            [ c1, 0, s1, 0],
+            [  0, 1,  0, 0],
+            [-s1, 0, c1, self.l1],
+            [  0, 0,  0, 1]
+        ])
+
+        c2, s2 = cos(th2), sin(th2)
+        H2 = np.array([
+            [ c2, 0, s2, 0],
+            [  0, 1,  0, 0],
+            [-s2, 0, c2, self.l2],
+            [  0, 0,  0, 1]
+        ])
+
+        d3 = self.l3 - offset - drop
+        a3 = -self.l4 - back + j3_fwd
+        c3, s3 = cos(th3), sin(th3)
+        H3 = np.array([
+            [c3, -s3, 0, a3 * c3],
+            [s3,  c3, 0, a3 * s3],
+            [ 0,   0, 1, d3],
+            [ 0,   0, 0, 1]
+        ])
+
+        d4 = self.l5
+        a4 = self.l4 + back - j3_fwd
+        c4, s4 = cos(th4), sin(th4)
+        H4 = np.array([
+            [c4, -s4, 0, a4 * c4],
+            [s4,  c4, 0, a4 * s4],
+            [ 0,   0, 1, d4],
+            [ 0,   0, 0, 1]
+        ])
+
+        d5 = -(5/3) * self.l5 + up
+        a5 = self.l6 + fwd - j5_bwd
+        c5, s5 = cos(th5), sin(th5)
+        H5 = np.array([
+            [c5, -s5, 0, a5 * c5],
+            [s5,  c5, 0, a5 * s5],
+            [ 0,   0, 1, d5],
+            [ 0,   0, 0, 1]
+        ])
+
+        c6, s6 = cos(th6), sin(th6)
+        H6 = np.array([
+            [c6, -s6, 0, 0],
+            [s6,  c6, 0, 0],
+            [ 0,   0, 1, 0],
+            [ 0,   0, 0, 1]
+        ])
+
+        H7 = np.eye(4)
 
         Hlist = [H1, H2, H3, H4, H5, H6, H7]
 
@@ -46,24 +94,39 @@ class KinovaRobot(KinovaRobotTemplate):
         new_joint_values = joint_values.copy()
 
         if all(theta == 0.0 for theta in new_joint_values):
-            new_joint_values = [theta + np.random.rand()*0.02 for theta in new_joint_values]
+            new_joint_values = [
+                new_joint_values[0] + 0.05,
+                new_joint_values[1] + 0.10,
+                new_joint_values[2] - 0.07,
+                new_joint_values[3] + 0.04,
+                new_joint_values[4] + 0.08,
+                new_joint_values[5] + 0.03,
+            ]
 
-        vel = vel[:6] if len(vel) >= 6 else vel + [0]*(6-len(vel))
+        vel = vel[:6] if len(vel) >= 6 else vel + [0] * (6 - len(vel))
 
-        joint_vel = self.inverse_jacobian(new_joint_values) @ vel
+        joint_vel = self.inverse_jacobian(new_joint_values) @ np.array(vel)
+
+        vel_limits = self.joint_vel_limits
+        if len(vel_limits) < 6:
+            vel_limits = vel_limits + [vel_limits[-1]] * (6 - len(vel_limits))
 
         joint_vel = np.clip(joint_vel,
-                            [limit[0] for limit in self.joint_vel_limits],
-                            [limit[1] for limit in self.joint_vel_limits])
+                            [limit[0] for limit in vel_limits],
+                            [limit[1] for limit in vel_limits])
 
         for i in range(self.num_dof):
             new_joint_values[i] += dt * joint_vel[i]
 
-        new_joint_values = np.clip(new_joint_values,
-                               [limit[0] for limit in self.joint_limits],
-                               [limit[1] for limit in self.joint_limits])
+        pos_limits = self.joint_limits
+        if len(pos_limits) < 6:
+            pos_limits = pos_limits + [pos_limits[-1]] * (6 - len(pos_limits))
 
-        return new_joint_values
+        new_joint_values = np.clip(new_joint_values,
+                                   [limit[0] for limit in pos_limits],
+                                   [limit[1] for limit in pos_limits])
+
+        return list(new_joint_values)
 
 
     def jacobian(self, joint_values: list):
@@ -88,7 +151,9 @@ class KinovaRobot(KinovaRobotTemplate):
 
 
     def inverse_jacobian(self, joint_values: list):
-        return np.linalg.pinv(self.jacobian(joint_values))
+        J = self.jacobian(joint_values)
+        damping = 0.05
+        return J.T @ np.linalg.inv(J @ J.T + damping**2 * np.eye(6))
 
 
 if __name__ == "__main__":
