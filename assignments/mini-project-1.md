@@ -29,7 +29,7 @@ team-based assignment with 2 students in a team.
 
 - Implement the resolved-rate motion control (RRMC) through gamepad control of the 5DOF Hiwonder hardware (**For instructions on how to use the Hiwonder robot
   platform, please**
-  [**see here**](https://github.com/OlinCollege-FunRobo/hiwonder-armpi-pro))
+  [**see here**](https://github.com/OlinCollege-FunRobo/funrobo_hiwonder))
 
 <br />
 
