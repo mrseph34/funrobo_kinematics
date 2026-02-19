@@ -21,60 +21,34 @@ class KinovaRobot(KinovaRobotTemplate):
         j5_bwd = 0.25 * self.l1
         drop   = 0.40 * self.l1
 
-        c1, s1 = cos(th1), sin(th1)
-        H1 = np.array([
-            [ c1, 0, s1, 0],
-            [  0, 1,  0, 0],
-            [-s1, 0, c1, self.l1],
-            [  0, 0,  0, 1]
-        ])
-
-        c2, s2 = cos(th2), sin(th2)
-        H2 = np.array([
-            [ c2, 0, s2, 0],
-            [  0, 1,  0, 0],
-            [-s2, 0, c2, self.l2],
-            [  0, 0,  0, 1]
-        ])
-
         d3 = self.l3 - offset - drop
         a3 = -self.l4 - back + j3_fwd
-        c3, s3 = cos(th3), sin(th3)
-        H3 = np.array([
-            [c3, -s3, 0, a3 * c3],
-            [s3,  c3, 0, a3 * s3],
-            [ 0,   0, 1, d3],
-            [ 0,   0, 0, 1]
-        ])
-
         d4 = self.l5
         a4 = self.l4 + back - j3_fwd
-        c4, s4 = cos(th4), sin(th4)
-        H4 = np.array([
-            [c4, -s4, 0, a4 * c4],
-            [s4,  c4, 0, a4 * s4],
-            [ 0,   0, 1, d4],
-            [ 0,   0, 0, 1]
-        ])
-
         d5 = -(5/3) * self.l5 + up
         a5 = self.l6 + fwd - j5_bwd
-        c5, s5 = cos(th5), sin(th5)
-        H5 = np.array([
-            [c5, -s5, 0, a5 * c5],
-            [s5,  c5, 0, a5 * s5],
-            [ 0,   0, 1, d5],
-            [ 0,   0, 0, 1]
-        ])
 
-        c6, s6 = cos(th6), sin(th6)
-        H6 = np.array([
-            [c6, -s6, 0, 0],
-            [s6,  c6, 0, 0],
-            [ 0,   0, 1, 0],
-            [ 0,   0, 0, 1]
-        ])
+        def Rz(th):
+            c, s = cos(th), sin(th)
+            return np.array([[c,-s,0,0],[s,c,0,0],[0,0,1,0],[0,0,0,1]])
 
+        def Ry(th):
+            c, s = cos(th), sin(th)
+            return np.array([[c,0,s,0],[0,1,0,0],[-s,0,c,0],[0,0,0,1]])
+
+        def Rx(th):
+            c, s = cos(th), sin(th)
+            return np.array([[1,0,0,0],[0,c,-s,0],[0,s,c,0],[0,0,0,1]])
+
+        def T(x, y, z):
+            return np.array([[1,0,0,x],[0,1,0,y],[0,0,1,z],[0,0,0,1]])
+
+        H1 = Rz(th1) @ T(0,   0,  self.l1)
+        H2 = Ry(th2) @ T(0,   0,  self.l2)
+        H3 = Ry(th3) @ T(a3,  0,  d3)
+        H4 = Rx(th4) @ T(a4,  0,  d4)
+        H5 = Rz(th5) @ T(a5,  0,  d5)
+        H6 = Ry(th6) @ T(0,   0,  0)
         H7 = np.eye(4)
 
         Hlist = [H1, H2, H3, H4, H5, H6, H7]
