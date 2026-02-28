@@ -5,10 +5,8 @@ from funrobo_kinematics.core.arm_models import (
     TwoDOFRobotTemplate, ScaraRobotTemplate, FiveDOFRobotTemplate
 )
 
-
 MAX_JOINT_DELTA_DEG = 3.0
 MAX_JOINT_DELTA_RAD = np.deg2rad(MAX_JOINT_DELTA_DEG)
-
 
 class FiveDOFRobot(FiveDOFRobotTemplate):
     def calc_forward_kinematics(self, joint_values: list, radians=True):
@@ -20,14 +18,78 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
         for i, theta in enumerate(curr_joint_values):
             curr_joint_values[i] = np.clip(theta, self.joint_limits[i][0], self.joint_limits[i][1])
 
-        DH = np.zeros((self.num_dof, 4))
-        DH[0] = [curr_joint_values[0], self.l1, 0, -np.pi/2]
-        DH[1] = [curr_joint_values[1] - np.pi/2, 0, self.l2, np.pi]
-        DH[2] = [curr_joint_values[2], 0, self.l3, np.pi]
-        DH[3] = [curr_joint_values[3] + np.pi/2, 0, 0, np.pi/2]
-        DH[4] = [curr_joint_values[4], self.l4 + self.l5, 0, 0]
+        th1, th2, th3, th4, th5 = curr_joint_values
 
-        Hlist = [ut.dh_to_matrix(dh) for dh in DH]
+        t1 = th1
+        t2 = th2 - np.pi/2
+        t3 = th3
+        t4 = th4 + np.pi/2
+        t5 = th5
+
+        # DH: [theta, d, a, alpha]
+        # H = Rz(theta) * Tz(d) * Tx(a) * Rx(alpha)
+
+        c1, s1 = cos(t1), sin(t1)
+        H0_1 = np.array([
+            [ c1, -s1,  0,  0         ],
+            [ s1,  c1,  0,  0         ],
+            [  0,   0,  1,  self.l1   ],
+            [  0,   0,  0,  1         ]
+        ]) @ np.array([
+            [ 1,  0,  0,  0 ],
+            [ 0,  0,  1,  0 ],
+            [ 0, -1,  0,  0 ],
+            [ 0,  0,  0,  1 ]
+        ])
+
+        c2, s2 = cos(t2), sin(t2)
+        H1_2 = np.array([
+            [ c2, -s2,  0,  self.l2*c2 ],
+            [ s2,  c2,  0,  self.l2*s2 ],
+            [  0,   0,  1,  0          ],
+            [  0,   0,  0,  1          ]
+        ]) @ np.array([
+            [ 1,  0,  0,  0 ],
+            [ 0, -1,  0,  0 ],
+            [ 0,  0, -1,  0 ],
+            [ 0,  0,  0,  1 ]
+        ])
+
+        c3, s3 = cos(t3), sin(t3)
+        H2_3 = np.array([
+            [ c3, -s3,  0,  self.l3*c3 ],
+            [ s3,  c3,  0,  self.l3*s3 ],
+            [  0,   0,  1,  0          ],
+            [  0,   0,  0,  1          ]
+        ]) @ np.array([
+            [ 1,  0,  0,  0 ],
+            [ 0, -1,  0,  0 ],
+            [ 0,  0, -1,  0 ],
+            [ 0,  0,  0,  1 ]
+        ])
+
+        c4, s4 = cos(t4), sin(t4)
+        H3_4 = np.array([
+            [ c4, -s4,  0,  0 ],
+            [ s4,  c4,  0,  0 ],
+            [  0,   0,  1,  0 ],
+            [  0,   0,  0,  1 ]
+        ]) @ np.array([
+            [ 1,  0,  0,  0 ],
+            [ 0,  0, -1,  0 ],
+            [ 0,  1,  0,  0 ],
+            [ 0,  0,  0,  1 ]
+        ])
+
+        c5, s5 = cos(t5), sin(t5)
+        H4_5 = np.array([
+            [ c5, -s5,  0,  0                  ],
+            [ s5,  c5,  0,  0                  ],
+            [  0,   0,  1,  self.l4 + self.l5  ],
+            [  0,   0,  0,  1                  ]
+        ])
+
+        Hlist = [H0_1, H1_2, H2_3, H3_4, H4_5]
 
         H_cumulative = [np.eye(4)]
         for i in range(self.num_dof):
@@ -47,17 +109,20 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
     def calc_velocity_kinematics(self, joint_values: list, vel: list, dt=0.02):
         new_joint_values = joint_values.copy()
 
-        if abs(new_joint_values[0]) < 0.05 and abs(new_joint_values[4]) < 0.05:
-            new_joint_values[0] += 0.05
-            new_joint_values[4] += 0.05
-
         vel = vel[:3] if len(vel) >= 3 else vel + [0] * (3 - len(vel))
+        vel = np.array(vel, dtype=float)
 
         J = self.jacobian(new_joint_values)
-        JT = J.T
-        J_inv = JT @ np.linalg.inv(J @ JT + (.025**2) * np.eye(3))
 
-        joint_vel = J_inv @ vel
+        manipulability = np.sqrt(max(0.0, np.linalg.det(J @ J.T)))
+        if manipulability < .01:
+            lam = .05 * (1.0 - manipulability / .01)
+        else:
+            lam = 0.0
+
+        J_dls = J.T @ np.linalg.inv(J @ J.T + lam**2 * np.eye(J.shape[0]))
+
+        joint_vel = J_dls @ vel
         joint_vel = np.clip(joint_vel,
                             [limit[0] for limit in self.joint_vel_limits],
                             [limit[1] for limit in self.joint_vel_limits])
@@ -74,19 +139,20 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
 
     def jacobian(self, joint_values: list):
-        _, Hlist = self.calc_forward_kinematics(joint_values)
-
-        H_cumulative = [np.eye(4)]
-        for i in range(self.num_dof):
-            H_cumulative.append(H_cumulative[-1] @ Hlist[i])
-
-        O0 = np.array([0, 0, 0, 1])
+        epsilon = 1e-5
         J = np.zeros((3, self.num_dof))
 
+        ee_current, _ = self.calc_forward_kinematics(joint_values)
+        f0 = np.array([ee_current.x, ee_current.y, ee_current.z])
+
         for i in range(self.num_dof):
-            r = (H_cumulative[-1] @ O0 - H_cumulative[i] @ O0)[:3]
-            z = H_cumulative[i][:3, :3] @ np.array([0, 0, 1])
-            J[:, i] = np.cross(z, r)
+            joint_values_plus = joint_values.copy()
+            joint_values_plus[i] += epsilon
+
+            ee_plus, _ = self.calc_forward_kinematics(joint_values_plus)
+            f1 = np.array([ee_plus.x, ee_plus.y, ee_plus.z])
+
+            J[:, i] = (f1 - f0) / epsilon
 
         J[np.abs(J) < 1e-10] = 0.0
         self._last_jacobian = J
@@ -94,9 +160,7 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
 
     def inverse_jacobian(self, joint_values: list):
-        J = self.jacobian(joint_values)
-        JT = J.T
-        return JT @ np.linalg.inv(J @ JT + (.025**2) * np.eye(3))
+        return np.linalg.pinv(self.jacobian(joint_values))
 
 
 if __name__ == "__main__":
