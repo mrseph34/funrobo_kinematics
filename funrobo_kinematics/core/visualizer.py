@@ -254,7 +254,15 @@ class Visualizer:
             command=self.numerical_solve
         )
         self.ik3_move_button.grid(column=2, row=row_number, columnspan=1, pady=2)
-        row_number += 3
+
+        self.ik_set_pose_button = ttk.Button(
+            self.control_frame,
+            text="Set Pose",
+            command=self.load_current_pose
+        )
+        self.ik_set_pose_button.grid(column=1, row=row_number+1, columnspan=1, pady=1)
+        row_number += 5
+        
 
         # ------------------------------------------------------------------------------------------------
         # Velocity kinematics
@@ -310,6 +318,16 @@ class Visualizer:
         """
         joint_values = [0.0] * self.robot.num_joints
         self.robot.reset_ee_trajectory()
+
+        # --- Reset sliders ---
+        for var in self.joint_scales:
+            var.set(0.0)
+
+        # --- Reset entry boxes ---
+        for entry in self.joint_button:
+            entry.delete(0, tk.END)
+            entry.insert(0, "0")
+
         self.update_FK(joint_values)
 
 
@@ -558,6 +576,31 @@ class Visualizer:
                 self.v[2] = 0
             elif key.char == 's':
                 self.v[2] = 0
+
+    
+    def set_pose_values(self, values):
+        """
+        Populate the IK pose entry fields with specified values.
+
+        Args:
+            values: List of 6 values [x, y, z, rotx, roty, rotz]
+        """
+        if len(values) != 6:
+            raise ValueError("Pose must contain exactly 6 values.")
+
+        for entry, val in zip(self.pose_button, values):
+            entry.delete(0, tk.END)
+            entry.insert(0, str(val))   
+
+    
+    def load_current_pose(self):
+        """
+        Load the current robot pose into the IK entry fields.
+        """
+        ee = self.robot.model.ee
+        pose = [round(val, 4) for val in [ee.x, ee.y, ee.z, ee.rotx, ee.roty, ee.rotz]]
+
+        self.set_pose_values(pose)
 
 
     def run(self) -> None:
