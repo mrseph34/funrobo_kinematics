@@ -21,7 +21,7 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
         th1, th2, th3, th4, th5 = curr_joint_values
 
         t1 = th1
-        t2 = th2 - np.pi/2
+        t2 = th2 # - np.pi/2
         t3 = th3
         t4 = th4 + np.pi/2
         t5 = th5

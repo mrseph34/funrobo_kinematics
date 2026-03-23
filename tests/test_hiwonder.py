@@ -7,12 +7,12 @@ import funrobo_kinematics.core.utils as ut
 
 #TODO Import your robot model script
 # ---------------------------------------
-from solutions.hiwonder import FiveDOFRobot
+from projects.mini_project_2.five_dof import FiveDOFRobot
 # ---------------------------------------
 
 
 robot_model = FiveDOFRobot()
-N = 100 # number of sample tries
+N = 300 # number of sample tries
 
 
 # -----------------------------------------------------------------------------
@@ -66,14 +66,14 @@ def test_numerical_ik(joint_values):
     assert ut.check_valid_ik_soln(new_joint_values, ee, robot_model)
 
 
-# @pytest.mark.parametrize("joint_values", joint_values_list, ids=ids)
-# def test_numerical_ik_restarts(joint_values):
-#     ee, _ = robot_model.calc_forward_kinematics(joint_values, radians=True)
+@pytest.mark.parametrize("joint_values", joint_values_list, ids=ids)
+def test_numerical_ik_restarts(joint_values):
+    ee, _ = robot_model.calc_forward_kinematics(joint_values, radians=True)
 
-#     init_joint_values = ut.sample_valid_joints(robot_model)
-#     new_joint_values = robot_model.calc_numerical_ik_restarts(ee, init_joint_values, 0.001)
+    init_joint_values = ut.sample_valid_joints(robot_model)
+    new_joint_values = robot_model.calc_numerical_ik_restarts(ee, init_joint_values, 0.001)
 
-#     assert ut.check_valid_ik_soln(new_joint_values, ee, robot_model)
+    assert ut.check_valid_ik_soln(new_joint_values, ee, robot_model)
 
 
 # -----------------------------------------------------------------------------

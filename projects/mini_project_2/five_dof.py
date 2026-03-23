@@ -26,9 +26,6 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
         t4 = th4 + np.pi/2
         t5 = th5
 
-        # DH: [theta, d, a, alpha]
-        # H = Rz(theta) * Tz(d) * Tx(a) * Rx(alpha)
-
         c1, s1 = cos(t1), sin(t1)
         H0_1 = np.array([
             [ c1, -s1,  0,  0         ],
@@ -149,14 +146,17 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
         if not solutions:
             return []
-        return solutions[soln % len(solutions)]
 
-    def _newton_raphson_step(self, q, target, tol, max_iter):
+        q0 = np.array(init_joint_values[:self.num_dof])
+        best = min(solutions, key=lambda s: np.linalg.norm(np.array(s) - q0))
+        return best
+
+    def _newton_raphson_step(self, q, target, tol, ilimit):
         q = np.array(q, dtype=float)
         lims_lo = np.array([lim[0] for lim in self.joint_limits])
         lims_hi = np.array([lim[1] for lim in self.joint_limits])
 
-        for _ in range(max_iter):
+        for _ in range(ilimit):
             curr_ee, _ = self.calc_forward_kinematics(q.tolist())
             err = target - np.array([curr_ee.x, curr_ee.y, curr_ee.z])
             if np.linalg.norm(err) < tol:
@@ -171,10 +171,10 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
         return q.tolist()
 
-    def calc_numerical_ik(self, ee: object, init_joint_values: list, tol=0.001, max_iter=500) -> list:
+    def calc_numerical_ik(self, ee: object, init_joint_values: list, tol=0.001, ilimit=500) -> list:
         target = np.array([ee.x, ee.y, ee.z])
 
-        best = self._newton_raphson_step(init_joint_values, target, tol, max_iter)
+        best = self._newton_raphson_step(init_joint_values, target, tol, ilimit)
         curr_ee, _ = self.calc_forward_kinematics(best)
         best_err = np.linalg.norm(target - np.array([curr_ee.x, curr_ee.y, curr_ee.z]))
 
@@ -183,7 +183,7 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
         for _ in range(20):
             q0 = ut.sample_valid_joints(self)
-            candidate = self._newton_raphson_step(q0, target, tol, max_iter)
+            candidate = self._newton_raphson_step(q0, target, tol, ilimit)
             curr_ee, _ = self.calc_forward_kinematics(candidate)
             err = np.linalg.norm(target - np.array([curr_ee.x, curr_ee.y, curr_ee.z]))
             if err < best_err:
@@ -194,10 +194,10 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
         return best
 
-    def calc_numerical_ik_restarts(self, ee: object, init_joint_values: list, tol=0.001, max_iter=500, n_restarts=30) -> list:
+    def calc_numerical_ik_restarts(self, ee: object, init_joint_values: list, tol=0.001, ilimit=500, n_restarts=30) -> list:
         target = np.array([ee.x, ee.y, ee.z])
 
-        best = self._newton_raphson_step(init_joint_values, target, tol, max_iter)
+        best = self._newton_raphson_step(init_joint_values, target, tol, ilimit)
         curr_ee, _ = self.calc_forward_kinematics(best)
         best_err = np.linalg.norm(target - np.array([curr_ee.x, curr_ee.y, curr_ee.z]))
 
@@ -206,7 +206,7 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
         for _ in range(n_restarts):
             q0 = ut.sample_valid_joints(self)
-            candidate = self._newton_raphson_step(q0, target, tol, max_iter)
+            candidate = self._newton_raphson_step(q0, target, tol, ilimit)
             curr_ee, _ = self.calc_forward_kinematics(candidate)
             err = np.linalg.norm(target - np.array([curr_ee.x, curr_ee.y, curr_ee.z]))
             if err < best_err:

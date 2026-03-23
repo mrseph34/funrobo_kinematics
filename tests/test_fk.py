@@ -6,7 +6,8 @@ import yaml
 import funrobo_kinematics.core.utils as ut
 
 # Import your robot model script
-from examples.two_dof_fk import TwoDOFRobot
+# from examples.two_dof_fk import TwoDOFRobot
+from projects.mini_project_1.five_dof import FiveDOFRobot
 
 
 
@@ -15,11 +16,11 @@ from examples.two_dof_fk import TwoDOFRobot
 # -----------------------------------------------------------------------------
 # Choose which robot model + corresponding test data file to validate.
 
-robot_model = TwoDOFRobot()
-test_file = "tests/data/two_dof_fk_test_data.yaml"
+# robot_model = TwoDOFRobot()
+# test_file = "tests/data/two_dof_fk_test_data.yaml"
 
-# robot_model = FiveDOFRobot()
-# test_file = "tests/data/five_dof_fk_test_data.yaml"
+robot_model = FiveDOFRobot()
+test_file = "tests/data/five_dof_fk_test_data.yaml"
 
 # robot_model = KinovaRobot()
 # test_file = "tests/data/kinova_fk_test_data.yaml"

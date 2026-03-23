@@ -5,7 +5,7 @@ import yaml
 import funrobo_kinematics.core.utils as ut
 
 # Import your robot model script
-from solutions.two_dof import TwoDOFRobot
+from examples.two_dof_nik import TwoDOFRobot
 
 
 robot_model = TwoDOFRobot()
