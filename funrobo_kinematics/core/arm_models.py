@@ -503,13 +503,14 @@ class KinovaRobotTemplate(BaseRobot):
         self.joint_values = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
         # Joint limits (in radians)
+        # slightly reduced to avoid full 2pi range
         self.joint_limits = [
-            [-2 * np.pi, 2 * np.pi],
+            [-1.99 * np.pi, 1.99 * np.pi],
             [-0.71 * np.pi, 0.71 * np.pi],
             [-0.82 * np.pi, 0.82 * np.pi],
-            [-2 * np.pi, 2 * np.pi],
+            [-1.99 * np.pi, 1.99 * np.pi],
             [-0.66 * np.pi, 0.66 * np.pi],
-            [-2 * np.pi, 2 * np.pi],
+            [-1.99 * np.pi, 1.99 * np.pi],
         ]
 
         self.joint_vel_limits = [
