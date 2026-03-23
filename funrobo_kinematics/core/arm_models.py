@@ -393,11 +393,11 @@ class FiveDOFRobotTemplate(BaseRobot):
         
         # Joint limits (in radians)
         self.joint_limits = [
-            [-np.pi, np.pi],
-            [-np.pi / 3, np.pi],
-            [-np.pi + np.pi / 12, np.pi - np.pi / 4],
-            [-np.pi + np.pi / 12, np.pi - np.pi / 12],
-            [-np.pi, np.pi],
+            [-2*np.pi / 3, 2*np.pi / 3],
+            [-2*np.pi / 3, 2*np.pi / 3],
+            [-2*np.pi / 3, 2*np.pi / 3],
+            [-2*np.pi / 3, 2*np.pi / 3],
+            [-2*np.pi / 3, 2*np.pi / 3],
         ]
 
         self.joint_vel_limits = [
@@ -494,21 +494,30 @@ class KinovaRobotTemplate(BaseRobot):
         super().__init__()
 
         # Link lengths
-        self.l1, self.l2, self.l3, self.l4, self.l5, self.l6, self.l7 = 0.156, 0.128, 0.410, 0.208, 0.105, 0.105, 0.0615
+        scale = 0.6
+        self.l1 = 0.156 * scale
+        self.l2 = 0.128 * scale
+        self.l3 = 0.410 * scale
+        self.l4 = 0.208 * scale
+        self.l5 = 0.105 * scale
+        self.l6 = 0.105 * scale
+        self.l7 = 0.0615 * scale
         
         self.joint_values = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         
         # Joint limits (in radians)
+        # slightly reduced to avoid full 2pi range
         self.joint_limits = [
-            [-2 * np.pi, 2 * np.pi],
+            [-1.99 * np.pi, 1.99 * np.pi],
             [-0.71 * np.pi, 0.71 * np.pi],
             [-0.82 * np.pi, 0.82 * np.pi],
-            [-2 * np.pi, 2 * np.pi],
+            [-1.99 * np.pi, 1.99 * np.pi],
             [-0.66 * np.pi, 0.66 * np.pi],
-            [-2 * np.pi, 2 * np.pi],
+            [-1.99 * np.pi, 1.99 * np.pi],
         ]
 
         self.joint_vel_limits = [
+            [-np.pi * 2, np.pi * 2],
             [-np.pi * 2, np.pi * 2],
             [-np.pi * 2, np.pi * 2],
             [-np.pi * 2, np.pi * 2],
