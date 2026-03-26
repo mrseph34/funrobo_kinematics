@@ -1,8 +1,13 @@
-import math
+import sys
+import os
+
+sys.path.append(os.path.abspath("examples"))
+
 import numpy as np
 import funrobo_kinematics.core.utils as ut
 from funrobo_kinematics.core.visualizer import Visualizer, RobotSim
 from funrobo_kinematics.core.arm_models import FiveDOFRobotTemplate
+from traj_gen import CubicPolynomial
 
 
 
@@ -62,8 +67,9 @@ class FiveDOFRobot(FiveDOFRobotTemplate):
 
 if __name__ == "__main__":
     
-    model = FiveDOFRobot()
+    robot_model = FiveDOFRobot()
+    traj_model = CubicPolynomial()
     
-    robot = RobotSim(robot_model=model)
+    robot = RobotSim(robot_model=robot_model, traj_model=traj_model)
     viz = Visualizer(robot=robot)
     viz.run()

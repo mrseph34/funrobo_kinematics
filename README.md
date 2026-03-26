@@ -51,8 +51,14 @@ pip install -e .
 
 ## How to run
 
-### Run the main script
-All example scripts live in the ``examples/`` folder
+### Run the example trajectory generation script
+
+```bash
+$ python examples/traj_gen.py
+```
+
+### Run the main viz tool script
+
 ```bash
 $ python examples/hiwonder.py
 ```

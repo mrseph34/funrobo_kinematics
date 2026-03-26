@@ -57,6 +57,7 @@ from pynput import keyboard
 
 from funrobo_kinematics.core.utils import EndEffector, wraptopi
 from funrobo_kinematics.core.path_planner import RobotPathPlanner
+from funrobo_kinematics.core.trajectory_generator import MultiAxisTrajectoryGenerator, MultiSegmentTrajectoryGenerator
 
 class Visualizer:
     """
@@ -307,9 +308,9 @@ class Visualizer:
         # # ------------------------------------------------------------------------------------------------
         # # Trajectory generation
         # # ------------------------------------------------------------------------------------------------
-        # self.mp_entry_title = ttk.Label(self.control_frame, text="Trajectory Generation:", font=("Arial", 13, "bold"))
-        # self.mp_entry_title.grid(column=0, row=row_number, columnspan=2, pady=(0, 10))
-        # row_number += 1
+        self.mp_entry_title = ttk.Label(self.control_frame, text="Trajectory Generation:", font=("Arial", 13, "bold"))
+        self.mp_entry_title.grid(column=0, row=row_number, columnspan=2, pady=(0, 10))
+        row_number += 1
 
         # traj_method_label = ttk.Label(self.control_frame, text=f"Select method (linear, cubic, etc.):")
         # traj_method_label.grid(column=0, row=row_number, sticky=tk.W)
@@ -318,12 +319,12 @@ class Visualizer:
         # traj_method_value.grid(column=1, row=row_number)
         # row_number += 1
 
-        # self.mp_follow_task_button = ttk.Button(self.control_frame, text="Generate Traj (Task-space)", command=self.generate_traj_task_space)
-        # self.mp_follow_task_button.grid(column=0, row=row_number, columnspan=1, pady=2)
+        self.mp_follow_task_button = ttk.Button(self.control_frame, text="Generate Traj (Task-space)", command=self.generate_traj_task_space)
+        self.mp_follow_task_button.grid(column=0, row=row_number, columnspan=1, pady=2)
 
-        # self.mp_follow_joint_button = ttk.Button(self.control_frame, text="Generate Traj (Joint-space)", command=self.generate_traj_joint_space)
-        # self.mp_follow_joint_button.grid(column=1, row=row_number, columnspan=1, pady=2)
-        # row_number += 1
+        self.mp_follow_joint_button = ttk.Button(self.control_frame, text="Generate Traj (Joint-space)", command=self.generate_traj_joint_space)
+        self.mp_follow_joint_button.grid(column=1, row=row_number, columnspan=1, pady=2)
+        row_number += 1
 
 
     def joints_from_sliders(self, val) -> None:
@@ -594,6 +595,65 @@ class Visualizer:
             time.sleep(0.5)
 
 
+    def generate_traj_task_space(self):
+        """
+        Generates and visualizes a task-space trajectory using a polynomial interpolator between waypoints.
+        """
+    
+        print('\nFollowing trajectory in task space...')
+    
+        if not hasattr(self, 'path_planner'):
+            tk.messagebox.showerror("Error", "Please generate a path first!")
+            return
+        
+        points = []
+        for joint_values in self.path:
+            ee, _ = self.robot.model.calc_forward_kinematics(joint_values, radians=True)
+            points.append([ee.x, ee.y, ee.z])
+
+        mstraj = MultiSegmentTrajectoryGenerator(  
+            method=self.robot.traj_model, mode="task", ndof=3
+        )
+        mstraj.solve(points, T=1)
+        mstraj.generate(nsteps_per_segment=3)
+
+        traj = mstraj.X[:,0,:].T # taking the position range of X and transposing to get (N, ndof)
+
+        for pos in traj:
+            ee = EndEffector(*pos, 0, -math.pi/2, wraptopi(math.atan2(pos[1], pos[0]) + math.pi))
+            self.update_IK(ee, soln=0, numerical=True, display_traj=True)
+            time.sleep(0.1)
+        
+        mstraj.plot()
+
+
+    def generate_traj_joint_space(self):
+        """
+        Generates and visualizes a joint-space trajectory by solving inverse kinematics at waypoints
+        and interpolating between resulting joint configurations.
+        """
+
+        print('\nFollowing trajectory in joint space...')
+
+        if not hasattr(self, 'path_planner'):
+            tk.messagebox.showerror("Error", "Please generate a path first!")
+            return
+
+        mstraj = MultiSegmentTrajectoryGenerator(  
+            method=self.robot.traj_model, mode="task", ndof=self.robot.num_joints
+        )
+        mstraj.solve(self.path, T=1)
+        mstraj.generate(nsteps_per_segment=10)
+
+        traj = mstraj.X[:,0,:].T # taking the position range of X and transposing to get (N, ndof)
+
+        for joint_values in traj:
+            joint_values_deg = np.rad2deg(joint_values)
+            self.update_FK(joint_values=joint_values_deg, display_traj=True) 
+            time.sleep(0.1)
+        
+        mstraj.plot()
+
 
     def toggle_obstacles(self) -> None:
         self.robot.toggle_obstacles()
@@ -711,16 +771,18 @@ class RobotSim:
         waypoint_x/y/z: Stored waypoint coordinates for visualization.
     """
 
-    def __init__(self, robot_model=None, show_animation: bool=True) -> None:
+    def __init__(self, robot_model=None, traj_model=None, show_animation: bool=True) -> None:
         """
         Initializes a robot with a specific configuration based on the type.
 
         Args:
             robot_model: Robot model instance to be visualized and controlled.
+            traj_model: Trajectory method instance to be used in generating feasible trajectories
             show_animation: If True, creates a Matplotlib figure and renders motion.
         """
 
         self.model = robot_model
+        self.traj_model = traj_model
         self.num_joints = robot_model.num_dof        
         
         self.origin = [0., 0., 0.]
@@ -948,7 +1010,7 @@ class RobotSim:
         self.plot_waypoints()
 
         # draw the EE trajectory
-        # self.plot_ee_trajectory()
+        self.plot_ee_trajectory()
 
         # draw the EE
         self.sub1.plot(EE.x, EE.y, EE.z, 'bo')
