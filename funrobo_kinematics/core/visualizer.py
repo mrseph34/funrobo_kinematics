@@ -274,7 +274,7 @@ class Visualizer:
         row_number += 1
 
         # Create start and goal configuration entry fields and labels
-        init_config = [0] * self.robot.num_joints
+        init_config = [-70, 60, -30, 80, 0]#[0] * self.robot.num_joints
         start_label = ttk.Label(self.control_frame, text=f"Start configuration (deg):")
         start_label.grid(column=0, row=row_number, sticky=tk.W)
         start_config_value = ttk.Entry(self.control_frame)
@@ -286,7 +286,7 @@ class Visualizer:
         goal_label = ttk.Label(self.control_frame, text=f"Goal configuration (deg):")
         goal_label.grid(column=0, row=row_number, sticky=tk.W)
         goal_config_value = ttk.Entry(self.control_frame)
-        goal_config_value.insert(0, str(init_config))
+        goal_config_value.insert(0, str([60, 60, -30, 90, 0]))#str(init_config))
         goal_config_value.grid(column=1, row=row_number)
         self.goal_config = goal_config_value
         row_number += 1
